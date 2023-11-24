@@ -13,8 +13,105 @@
 #include "v8.h"
 
 #include "v8engine.h"
+#include "base64.h"
 
 using namespace v8;
+
+void WorkerRoutine(int index)
+{
+    // std::cout << "Worker start! " << index << std::endl;
+    // if (tasks_.empty() || index <= 0 || (index > tasks_.size())) {
+    //     std::cout << "index error! " << index << ", tasks_=" << tasks_.size() << std::endl;
+    //     return;
+    // }
+    // auto jscode = jsScript_.c_str();
+    // // Create a new Isolate and make it the current one.
+    // v8::Isolate::CreateParams create_params;
+    // create_params.array_buffer_allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+    // v8::Isolate* isolate = v8::Isolate::New(create_params);
+    // {
+    //     //v8::Locker locker(isolate_);
+    //     v8::Isolate::Scope isolate_scope(isolate);
+    //     // Create a stack-allocated handle scope.
+    //     v8::HandleScope handle_scope(isolate);
+    //     // Create a new context.
+    //     v8::Local<v8::Context> context = v8::Context::New(isolate);
+    //     // Enter the context for compiling and running the hello world script.
+    //     v8::Context::Scope context_scope(context);
+
+    //     //设置 console.error回调
+    //     {
+    //         v8::Local<v8::Object> globalObj = context->Global();
+    //         v8::Local<v8::Object> console = v8::Object::New(isolate);
+    //         auto b1 = globalObj->Set(context, v8::String::NewFromUtf8(isolate, "console").ToLocalChecked(), console);
+
+    //         v8::Local<v8::FunctionTemplate> error_template = v8::FunctionTemplate::New(isolate, V8ConsoleMessageCallback);
+    //         v8::Local<v8::Function> error_function = error_template->GetFunction(context).ToLocalChecked();
+    //         auto b2 = console->Set(context, v8::String::NewFromUtf8(isolate, "log").ToLocalChecked(), error_function);
+    //     }
+    //     //编译并执行js脚本
+    //     v8::TryCatch trycatch(isolate);
+    //     v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, jscode, v8::NewStringType::kNormal).ToLocalChecked();
+    //     v8::Local<v8::Script> script;
+    //     if (!v8::Script::Compile(context, source).ToLocal(&script)) {
+    //         V8PrintException(isolate, &trycatch);
+    //         return;
+    //     }
+    //     v8::Local<v8::Value> result;
+    //     if (!script->Run(context).ToLocal(&result)) {
+    //         V8PrintException(isolate, &trycatch);
+    //         return;
+    //     }
+    //     std::cout << "run javascript suc! index=" << index  << std::endl;
+    //     // Take a reference to the created JS function and call it with arguments
+    //     v8::Local<v8::String> funcName = v8::String::NewFromUtf8(isolate, "onReceiveBattleRsp").ToLocalChecked();
+    //     v8::Local<v8::Value> func_value = context->Global()->Get(context, funcName).ToLocalChecked();
+    //     if (func_value->IsFunction()) {
+    //         //执行任务
+    //         while (true)
+    //         {
+    //             string str;
+    //             {
+    //                 //出作用域自动解锁无需调用unlock()
+    //                 std::unique_lock<std::mutex> guard(m_mutex);
+    //                 int i = index % tasks_.size();
+    //                 m_condi.wait(guard, [this, i]() {
+    //                     return (shutdown_ || !tasks_[i].empty());
+    //                 } );
+    //                 if (shutdown_) {
+    //                     break;
+    //                 }
+    //                 if(tasks_[i].empty()) {
+    //                     continue;
+    //                 }
+    //                 auto str = std::move(tasks_[i].front());
+    //                 tasks_[i].pop_front();
+    //             }
+    //             //执行一次业务
+    //             v8::Local<v8::Value> func_arg = v8::String::NewFromUtf8(isolate, str.c_str()).ToLocalChecked();
+    //             {
+    //                 v8::Local<v8::Object> func_object = func_value.As<v8::Object>();
+    //                 v8::MaybeLocal<v8::Value> func_result = v8::Function::Cast(*func_object)->Call(context, context->Global(), 1, &func_arg);
+    //                 if (!func_result.IsEmpty()) {
+    //                     std::cout << "Call result: " << *(v8::String::Utf8Value(isolate, func_result.ToLocalChecked())) << std::endl;
+    //                 }
+    //                 else {
+    //                     v8::String::Utf8Value utf8Value(isolate, trycatch.Message()->Get());
+    //                     std::cout << "CallAsFunction didn't return a value, exception: " << *utf8Value << std::endl;
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     else {
+    //         std::cerr << "onReceiveBattleRsp is not a function! index=" << index << std::endl;
+    //         return;
+    //     }
+    // }
+
+    // isolate->Dispose();
+    // delete create_params.array_buffer_allocator;
+    // std::cout << "Worker done! " << index << std::endl;
+}
 
 int srcfunc(int argc, char* argv[])
 {
@@ -154,6 +251,17 @@ void PrintException(v8::Isolate* isolate, v8::TryCatch* trycatch) {
     }
 }
 
+void PrintHeapStats(v8::Isolate* isolate, int index) {
+    v8::HeapStatistics heap_stats;
+    isolate->GetHeapStatistics(&heap_stats);
+    std::cout << "PrintHeapStats-------------------- index=" << index << std::endl;
+    std::cout << "Heap size limit: " << heap_stats.heap_size_limit() / 1024 << " KB" << std::endl;
+    std::cout << "Total heap size: " << heap_stats.total_heap_size() / 1024 << " KB" << std::endl;
+    std::cout << "Total heap size executable: " << heap_stats.total_heap_size_executable() / 1024 << " KB" << std::endl;
+    std::cout << "Total physical size: " << heap_stats.total_physical_size() / 1024 << " KB" << std::endl;
+    std::cout << "Used heap size: " << heap_stats.used_heap_size() / 1024 << " KB" << std::endl;
+}
+
 // 加载文件
 std::string ReadFile(const std::string &filename)
 {
@@ -164,6 +272,12 @@ std::string ReadFile(const std::string &filename)
 	std::string content((std::istreambuf_iterator<char>(input)), (std::istreambuf_iterator<char>()));
 	input.close();
 	return content;
+}
+
+int64_t _GetMilliSeconds(){
+    auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+    auto val = now_ms.time_since_epoch().count();
+    return val;
 }
 
 void jstest()
@@ -188,15 +302,17 @@ void jstest()
   //                     "}";
 
   // const char js_code[] = "function foo(arg) {"
-  //                     "return arg + ' with foo from JS';"
+  //                     "return 'i='+ arg;"
   //                     "}";
 
-  std::string jsCode = ReadFile("./battle.js");
-  if(jsCode.empty()) {
-    std::cout << "jsCode empty!" << std::endl;
-    return;
-  }
-  const char* js_code = jsCode.c_str();
+  const char js_code[] = "function foo(arg) {}";
+
+  // std::string jsCode = ReadFile("./battle.js");
+  // if(jsCode.empty()) {
+  //   std::cout << "jsCode empty!" << std::endl;
+  //   return;
+  // }
+  //const char* js_code = jsCode.c_str();
 
   //执行JavaScript代码
   // const char* js_code = R"(
@@ -208,6 +324,171 @@ void jstest()
 
   // Initialize V8.
   printf("jstest start!\n");
+  v8::V8::InitializeICUDefaultLocation("");
+  v8::V8::InitializeExternalStartupData("");
+  std::unique_ptr<v8::Platform> platform = v8::platform::NewDefaultPlatform();
+  v8::V8::InitializePlatform(platform.get());
+  v8::V8::Initialize();
+  // Create a new Isolate and make it the current one.
+  v8::Isolate::CreateParams create_params;
+  create_params.array_buffer_allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+  v8::Isolate* isolate = v8::Isolate::New(create_params);
+  {
+    do
+    {
+      v8::Isolate::Scope isolate_scope(isolate);
+      // Create a stack-allocated handle scope.
+      v8::HandleScope handle_scope(isolate);
+
+      // for (int i = 0; i < 500000; i++) {
+      //   v8::HandleScope handle_scope1(isolate);
+      //   v8::Local<v8::String> foo_arg;
+      //   v8::String::NewFromUtf8(isolate, std::to_string(i).c_str()).ToLocal(&foo_arg);
+      // }
+      // std::cout << "show heap----------------------2:" << std::endl;
+      // PrintHeapStats(isolate, 0);
+      // break;
+
+      // Create a new context.
+      v8::Local<v8::Context> context = v8::Context::New(isolate);
+      // Enter the context for compiling and running the hello world script.
+      v8::Context::Scope context_scope(context);
+
+      //设置 console.error回调
+      {
+        v8::Local<v8::Object> globalObj = context->Global();
+        v8::Local<v8::Object> console = v8::Object::New(isolate);
+        auto b1 = globalObj->Set(context, v8::String::NewFromUtf8(isolate, "console").ToLocalChecked(), console);
+
+        v8::Local<v8::FunctionTemplate> error_template = v8::FunctionTemplate::New(isolate, ConsoleMessageCallback);
+        v8::Local<v8::Function> error_function = error_template->GetFunction(context).ToLocalChecked();
+        //console->Set(context, v8::String::NewFromUtf8(isolate, "error").ToLocalChecked(), error_function);
+        auto b2 = console->Set(context, v8::String::NewFromUtf8(isolate, "log").ToLocalChecked(), error_function);
+      }
+
+      v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, js_code, v8::NewStringType::kNormal).ToLocalChecked();
+
+      v8::TryCatch trycatch(isolate);
+      v8::Local<v8::Script> script;
+      if (!v8::Script::Compile(context, source).ToLocal(&script)) {
+          PrintException(isolate, &trycatch);
+          break;
+      }
+      v8::Local<v8::Value> result;
+      if (!script->Run(context).ToLocal(&result)) {
+          PrintException(isolate, &trycatch);
+          break;
+      }
+
+      // v8::Local<v8::Script> script = v8::Script::Compile(context, source).ToLocalChecked();
+      // v8::TryCatch trycatch(isolate);
+      // v8::Local<v8::Value> result = script->Run(context).ToLocalChecked();
+      // if(result->IsUndefined())
+      // {
+      //   v8::String::Utf8Value utf8Value(isolate, trycatch.Message()->Get());
+      //   std::cout << "run script failed! exception=" << *utf8Value << std::endl;
+      //   return;
+      // }
+      v8::String::Utf8Value utf8(isolate, result);
+
+      // This is the result of the evaluation of the code (probably undefined)
+      printf("%s\n", *utf8);
+
+      // Take a reference to the created JS function and call it with a single string argument
+      v8::Local<v8::Value> foo_value = context->Global()->Get(context, v8::String::NewFromUtf8(isolate, "foo").ToLocalChecked()).ToLocalChecked();
+      if (foo_value->IsFunction()) {
+          PrintHeapStats(isolate, 0);
+          std::cout << "输入命令1继续执行:" << std::endl;
+          int a;
+          std::cin >> a;
+          // argument (string)
+          for (int i = 0; i < 500000; i++)
+          {
+              v8::HandleScope handle_scope1(isolate);
+              v8::Local<v8::Value> foo_arg = v8::String::NewFromUtf8(isolate, std::to_string(i).c_str()).ToLocalChecked();
+              //Method 1
+              v8::TryCatch trycatch(isolate);
+              v8::MaybeLocal<v8::Value> foo_ret = foo_value.As<v8::Object>()->CallAsFunction(context, context->Global(), 1, &foo_value);
+              if (!foo_ret.IsEmpty()) {
+                  v8::String::Utf8Value utf8Value(isolate, foo_ret.ToLocalChecked());
+                  std::cout << "CallAsFunction result: " << *utf8Value << std::endl;
+              } else {
+                  v8::String::Utf8Value utf8Value(isolate, trycatch.Message()->Get());
+                  std::cout << "CallAsFunction didn't return a value, exception: " << *utf8Value << std::endl;
+              }
+              std::cout << "CallAsFunction result: " << i << std::endl;
+          }
+          PrintHeapStats(isolate, 0);
+
+          {
+              // Method 2
+              // v8::TryCatch trycatch(isolate);
+              // v8::Local<v8::Object> foo_object = foo_value.As<v8::Object>();
+              // std::cout << "show 4" << std::endl;
+              // v8::MaybeLocal<v8::Value> foo_result = v8::Function::Cast(*foo_object)->Call(context, context->Global(), 1, &foo_arg);
+              // std::cout << "show 5" << std::endl;
+              // if (!foo_result.IsEmpty()) {
+              //     std::cout << "Call result: " << *(v8::String::Utf8Value(isolate, foo_result.ToLocalChecked())) << std::endl;
+              // } else {
+              //     std::cout << "show 6" << std::endl;
+              //     v8::String::Utf8Value utf8Value(isolate, trycatch.Message()->Get());
+              //     std::cout << "CallAsFunction didn't return a value, exception: " << *utf8Value << std::endl;
+              // }
+          }
+      } else {
+          std::cerr << "foo is not a function" << std::endl;
+      }
+    }
+    while(false);
+  }
+
+  while (1) {
+    std::cout << "输入命令 1-打印最新内存 2-结束 3-执行gc 其他--" << std::endl;
+    int a1;
+    std::cin >> a1;
+    if (a1 == 1) {
+      PrintHeapStats(isolate, 0);
+    }
+    else if(a1 == 2) {
+      break;
+    }
+    else if(a1==3) {
+      int64_t tick1 = _GetMilliSeconds();
+      isolate->LowMemoryNotification();
+      std::cout << "执行gc结束! cost=" << (_GetMilliSeconds() - tick1) << std::endl;
+    }
+    else{
+      continue;
+    }
+  }
+
+  isolate->Dispose();
+  v8::V8::Dispose();
+  v8::V8::DisposePlatform();
+  delete create_params.array_buffer_allocator;
+}
+
+void jstest_battle()
+{
+  //读取脚本
+  std::string jsCode = ReadFile("./battle.js");
+  if(jsCode.empty()) {
+    std::cout << "jsCode empty!" << std::endl;
+    return;
+  }
+  const char* js_code = jsCode.c_str();
+
+  //参数内容
+  std::string bt = ReadFile("./bt.txt");
+  if(bt.empty()) {
+    std::cout << "bt empty!" << std::endl;
+    return;
+  }
+  std::string base64str = base64_encode(bt);
+  std::cout << "bt size=" << bt.size() << " base64str="<< base64str.size() << std::endl;
+
+  // Initialize V8.
+  printf("jstest_battle start!\n");
   v8::V8::InitializeICUDefaultLocation("");
   v8::V8::InitializeExternalStartupData("");
   std::unique_ptr<v8::Platform> platform = v8::platform::NewDefaultPlatform();
@@ -253,76 +534,52 @@ void jstest()
           PrintException(isolate, &trycatch);
           break;
       }
-      
-      // v8::Local<v8::Script> script = v8::Script::Compile(context, source).ToLocalChecked();
-      // v8::TryCatch trycatch(isolate);
-      // v8::Local<v8::Value> result = script->Run(context).ToLocalChecked();
-      // if(result->IsUndefined())
-      // {
-      //   v8::String::Utf8Value utf8Value(isolate, trycatch.Message()->Get());
-      //   std::cout << "run script failed! exception=" << *utf8Value << std::endl;
-      //   return;
-      // }
-      std::cout << "show 1" << std::endl;
-      v8::String::Utf8Value utf8(isolate, result);
 
+      v8::String::Utf8Value utf8(isolate, result);
       // This is the result of the evaluation of the code (probably undefined)
       printf("%s\n", *utf8);
 
-      std::cout << "show 2" << std::endl;
-      std::cout << "show 3" << std::endl;
-
-      // Take a reference to the created JS function and call it with a single string argument
-      v8::Local<v8::Value> foo_value = context->Global()->Get(context, v8::String::NewFromUtf8(isolate, "foo").ToLocalChecked()).ToLocalChecked();
-      if (foo_value->IsFunction()) {
-          // argument (string)
-          v8::Local<v8::Value> foo_arg = v8::String::NewFromUtf8(isolate, "arg from C++").ToLocalChecked();
-          {
-              // Method 1
-              // v8::TryCatch trycatch(isolate);
-              // v8::MaybeLocal<v8::Value> foo_ret = foo_value.As<v8::Object>()->CallAsFunction(context, context->Global(), 1, &foo_arg);
-              // if (!foo_ret.IsEmpty()) {
-              //     v8::String::Utf8Value utf8Value(isolate, foo_ret.ToLocalChecked());
-              //     std::cout << "CallAsFunction result: " << *utf8Value << std::endl;
-              // } else {
-              //     v8::String::Utf8Value utf8Value(isolate, trycatch.Message()->Get());
-              //     std::cout << "CallAsFunction didn't return a value, exception: " << *utf8Value << std::endl;
-              // }
-          }
-
-          {
-              // Method 2
-              v8::TryCatch trycatch(isolate);
-              v8::Local<v8::Object> foo_object = foo_value.As<v8::Object>();
-              std::cout << "show 4" << std::endl;
-              v8::MaybeLocal<v8::Value> foo_result = v8::Function::Cast(*foo_object)->Call(context, context->Global(), 1, &foo_arg);
-              std::cout << "show 5" << std::endl;
-              if (!foo_result.IsEmpty()) {
-                  std::cout << "Call result: " << *(v8::String::Utf8Value(isolate, foo_result.ToLocalChecked())) << std::endl;
-              } else {
-                  std::cout << "show 6" << std::endl;
-                  v8::String::Utf8Value utf8Value(isolate, trycatch.Message()->Get());
-                  std::cout << "CallAsFunction didn't return a value, exception: " << *utf8Value << std::endl;
-              }
-          }
-      } else {
-          std::cerr << "foo is not a function" << std::endl;
+      v8::Local<v8::Value> objValue2;
+      auto b1 = context->Global()->Get(context, v8::String::NewFromUtf8(isolate, "goCallJs").ToLocalChecked()).ToLocal(&objValue2);
+      if(objValue2.IsEmpty()) {
+        std::cout << "objValue2 empty! " << std::endl;
+        break;
       }
-      std::cout << "show end" << std::endl;
+      v8::Local<v8::Object> goObj = objValue2.As<v8::Object>();
+
+      v8::Local<v8::Value> funcValue;
+      auto b2 = goObj->Get(context, v8::String::NewFromUtf8(isolate, "onReceiveBattleRsp").ToLocalChecked()).ToLocal(&funcValue);
+      if(funcValue.IsEmpty()) {
+        std::cout << "funcValue empty! " << std::endl;
+        break;
+      }
+      if (funcValue->IsFunction()) {
+          v8::Local<v8::Value> args[2] = {
+            v8::Integer::New(isolate, 0),
+            v8::String::NewFromUtf8(isolate, base64str.c_str()).ToLocalChecked()
+          };
+
+          v8::MaybeLocal<v8::Value> fresult = funcValue.As<v8::Object>()->CallAsFunction(context, objValue2, 2, args);
+          if (!fresult.IsEmpty()) {
+              v8::String::Utf8Value utf8Value(isolate, fresult.ToLocalChecked());
+              std::cout << "CallAsFunction result: " << *utf8Value << std::endl;
+          } else {
+              v8::String::Utf8Value utf8Value(isolate, trycatch.Message()->Get());
+              std::cout << "CallAsFunction didn't return a value, exception: " << *utf8Value << std::endl;
+          }
+      }
+      else{
+        std::cout << "funcValue not a function!" << std::endl;
+      }
     }
     while(false);
   }
-
-  int a;
-  std::cin >> a;
-  std::cout << "a=" << a << std::endl;
 
   isolate->Dispose();
   v8::V8::Dispose();
   v8::V8::DisposePlatform();
   delete create_params.array_buffer_allocator;
 }
-
 
 void AddStringToArguments(v8::Isolate* isolate, std::string str, v8::Handle<v8::Value> argList[], unsigned int argPos)
 {
@@ -472,45 +729,67 @@ void V8Initialize()
 
 int main(int argc, char* argv[])
 {
+  //1、测试
   //执行js脚本
   //jstest();
+  //jstest_battle();
 
-  int threadNum = 8;
-  v8engine v8obj;
-  v8obj.Create(threadNum);
-  std::this_thread::sleep_for(std::chrono::seconds(3));
-  // v8obj.PushTask("arg1", 1);
-  // v8obj.PushTask("arg2", 2);
-
-  // for(int i = 1; i <= 10000; i++) {
-  //     int idx = (i%threadNum);
-  //     std::string str1 = "arg"+ std::to_string(i);
-  //     v8obj.PushTask(str1, 1);
-  // }
-  //v8obj.Release();
-
+  //2、所线程测试
   //V8Initialize();
-
-  // v8::V8::InitializeICUDefaultLocation("");
-  // v8::V8::InitializeExternalStartupData("");
-  // std::unique_ptr<v8::Platform> platform(v8::platform::NewDefaultPlatform());
-  // v8::V8::InitializePlatform(platform.get());
-  // v8::V8::Initialize();
   // std::vector<std::thread> threads_;
   // thread_test(threads_);
-
-  std::cout << "thread_test end!" << std::endl;
-
+  //std::cout << "thread_test end!" << std::endl;
   //等待所有线程执行完毕
   // for(auto& it : threads_) {
   //   it.join();
   // }
-
   // v8::V8::Dispose();
   // v8::V8::DisposePlatform();
   // g_v8platform.reset();
 
-  std::cout << "main done!" << std::endl;
+  //v8engine 测试
+  //参数内容
+  std::string bt = ReadFile("./bt.txt");
+  std::string base64str = base64_encode(bt);
+  std::cout << "bt size=" << bt.size() << " base64str="<< base64str.size() << std::endl;
+
+  int threadNum = 8;
+  v8engine v8obj;
+  v8obj.Create(threadNum);
+  std::this_thread::sleep_for(std::chrono::seconds(2));
+  for(int i = 0; i < 3; i++){
+    std::cout << " " << std::endl;
+  }
+
+  while (1) {
+    std::cout << "输入命令:1-继续执行 2-关闭v8engine 3-输出堆栈 4-执行gc" << std::endl;
+    int a;
+    std::cin >> a;
+    if(a == 1) {
+      int tasknum = 50000;
+      v8obj.StartStat(tasknum);
+      for(int i = 1; i <= tasknum; i++) {
+          v8obj.PushTask(base64str, i);
+      }
+    }
+    else if (a == 2) {
+      v8obj.Release();
+      std::cout << "main done!" << std::endl;
+      break;
+    }
+    else if(a == 3){
+      v8obj.PrintMemoryInfo();
+    }
+    else if(a == 4){
+      v8obj.GarbageCollect();
+    }
+    else{
+      continue;
+    }
+  }
+
+  //v8obj.Release();
+  //std::cout << "main done!" << std::endl;
 
   getchar();
   return 0;
