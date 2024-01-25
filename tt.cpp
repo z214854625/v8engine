@@ -755,7 +755,7 @@ int main(int argc, char* argv[])
 
   int threadNum = 8;
   v8engine v8obj;
-  v8obj.Create(threadNum);
+  v8obj.Create(threadNum, base64str, false);
   std::this_thread::sleep_for(std::chrono::seconds(2));
   for(int i = 0; i < 3; i++){
     std::cout << " " << std::endl;
@@ -769,7 +769,7 @@ int main(int argc, char* argv[])
       int tasknum = 50000;
       v8obj.StartStat(tasknum);
       for(int i = 1; i <= tasknum; i++) {
-          v8obj.PushTask(base64str, i);
+          v8obj.PushTask({base64str, i, [](std::string){}});
       }
     }
     else if (a == 2) {
@@ -782,6 +782,10 @@ int main(int argc, char* argv[])
     }
     else if(a == 4){
       v8obj.GarbageCollect();
+    }
+    else if(a == 5) {
+      v8obj.CloseVM();
+      v8obj.Create(threadNum, base64str, true);
     }
     else{
       continue;
