@@ -20,6 +20,7 @@ namespace v8 {
 }
 
 using TaskType = std::tuple<std::string, uint32_t, std::function<void(std::string)>>;
+using ResultType = std::tuple<std::function<void(std::string)>, std::string>;
 
 class v8engine
 {
@@ -50,6 +51,8 @@ public:
     //关闭vm
     void CloseVM();
 
+    void GetResult(std::list<ResultType>& listResult);
+
 protected:
     //获取系统毫秒
     int64_t GetMilliSeconds();
@@ -72,4 +75,6 @@ private:
     std::string jsScript_;
     std::atomic<int> statTaskNum_;
     int64_t statTick_;
+    std::mutex m_mutexResult;
+    std::list<ResultType> results_;
 };

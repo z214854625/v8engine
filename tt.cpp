@@ -727,6 +727,8 @@ void V8Initialize()
   v8::V8::Initialize();
 }
 
+using ResultType = std::tuple<std::function<void(std::string)>, std::string>;
+
 int main(int argc, char* argv[])
 {
   //1、测试
@@ -786,6 +788,15 @@ int main(int argc, char* argv[])
     else if(a == 5) {
       v8obj.CloseVM();
       v8obj.Create(threadNum, base64str, true);
+    }
+    else if(a == 0) {
+      std::list<ResultType> lsResult;
+      v8obj.GetResult(lsResult);
+      for (auto& tu: lsResult) {
+        auto& callback = std::get<0>(tu);
+        auto& str = std::get<1>(tu);
+        callback(str);
+      }
     }
     else{
       continue;

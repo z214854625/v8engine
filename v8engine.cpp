@@ -127,19 +127,22 @@ void v8engine::V8ExecuteScript(v8::Isolate* isolate, const char* jscode, int ind
                 tasks_[i].pop_front();
             }
             const string& str = std::get<0>(tu);
-            auto callback = std::get<2>(tu);
+            auto& callback = std::get<2>(tu);
             if(str.empty()) {
-                callback(str);
+                std::unique_lock<std::mutex> guard(m_mutexResult);
+                results_.push_back({std::move(callback), std::move(str)});
                 continue;
             }
             if(str == "showmem") {
                 V8PrintHeapStats(isolate, index);
-                callback(str);
+                std::unique_lock<std::mutex> guard(m_mutexResult);
+                results_.push_back({std::move(callback), std::move(str)});
                 continue;
             }
             if(str == "gc") {
                 startGC(isolate, index);
-                callback(str);
+                std::unique_lock<std::mutex> guard(m_mutexResult);
+                results_.push_back({std::move(callback), std::move(str)});
                 continue;
             }
             //执行一次任务
@@ -156,7 +159,8 @@ void v8engine::V8ExecuteScript(v8::Isolate* isolate, const char* jscode, int ind
                     if(statTaskNum_ > 0 && (--statTaskNum_ <= 0)) {
                         std::cout << "all task done!!!!!!!!!!!!!!!!!!! cost=" << (GetMilliSeconds() - statTick_) << std::endl;
                     }
-                    callback(strResult);
+                    std::unique_lock<std::mutex> guard(m_mutexResult);
+                    results_.push_back({std::move(callback), std::move(strResult)});
                 }
                 else {
                     v8::String::Utf8Value utf8Value(isolate, trycatch.Message()->Get());
@@ -287,4 +291,10 @@ void v8engine::CloseVM()
 		t.join();
 	}
 	workers_.clear();
+}
+
+void v8engine::GetResult(std::list<ResultType>& listResult)
+{
+    std::unique_lock<std::mutex> guard(m_mutexResult);
+    listResult.swap(results_);
 }
